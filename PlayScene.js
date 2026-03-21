@@ -450,8 +450,7 @@ class PlayScene extends Phaser.Scene {
         let pvx = vx;
         let pvy = vy;
 
-        this.aimGraphics.lineStyle(2, 0xffffff, 0.5);
-
+        // Yellow dotted trajectory - easier to see against the game background
         for (let i = 0; i < 50; i++) {
             const dt = 0.05;
             pvx += this.wind * 0.5;
@@ -464,9 +463,18 @@ class PlayScene extends Phaser.Scene {
                 break;
             }
 
+            // Draw dashed line segment (short line every 3 steps)
             if (i % 3 === 0) {
-                this.aimGraphics.fillStyle(0xffffff, 0.4);
-                this.aimGraphics.fillCircle(x, y, 3);
+                const prevX = x - pvx;
+                const prevY = y - pvy * dt;
+                this.aimGraphics.lineStyle(2, 0xffff00, 0.6);
+                this.aimGraphics.lineBetween(prevX, prevY, x, y);
+            }
+
+            // Draw yellow dot every 3 steps (larger, more visible)
+            if (i % 3 === 0) {
+                this.aimGraphics.fillStyle(0xffff00, 0.8);
+                this.aimGraphics.fillCircle(x, y, 4);
             }
         }
     }
