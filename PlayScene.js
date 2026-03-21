@@ -516,7 +516,7 @@ class PlayScene extends Phaser.Scene {
         const startY = player.y - 15;
 
         const velocity = this.power * 8;
-        const vx = Math.cos(angleRad) * velocity;
+        const vx = Math.cos(angleRad) * velocity * direction;
         const vy = -Math.sin(angleRad) * velocity;
 
         let x = startX;
