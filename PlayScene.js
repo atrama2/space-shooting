@@ -119,7 +119,7 @@ class PlayScene extends Phaser.Scene {
         });
 
         // Controls help (top area)
-        this.controlsText = this.add.text(300, 110, 'A/D: Angle  |  W/S: Power  |  SPACE: Shoot', {
+        this.controlsText = this.add.text(300, 110, 'A/D: Angle  |  W/S: Power  |  SPACE: Shoot  |  H: Wind Toggle', {
             fontSize: '12px',
             fontFamily: 'Segoe UI, sans-serif',
             color: '#666666'
@@ -365,7 +365,8 @@ class PlayScene extends Phaser.Scene {
             rightArrow: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
             upArrow: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
             downArrow: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
-            r: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R)
+            r: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R),
+            h: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H)
         };
 
         // Track which keys are held for continuous adjustment
@@ -377,6 +378,7 @@ class PlayScene extends Phaser.Scene {
         this.angle = 45;
         this.power = 50;
         this.wind = 0;
+        this.windEnabled = true;
         this.projectile = null;
         this.isShooting = false;
         this.gameOver = false;
@@ -396,9 +398,14 @@ class PlayScene extends Phaser.Scene {
     }
 
     updateUI() {
-        const windStr = this.wind >= 0 ? `Wind: +${this.wind}` : `Wind: ${this.wind}`;
-        this.windText.setText(windStr);
-        this.windText.setColor(this.wind >= 0 ? '#88ccff' : '#ffaa88');
+        if (!this.windEnabled) {
+            this.windText.setText('Wind: OFF');
+            this.windText.setColor('#888888');
+        } else {
+            const windStr = this.wind >= 0 ? `Wind: +${this.wind}` : `Wind: ${this.wind}`;
+            this.windText.setText(windStr);
+            this.windText.setColor(this.wind >= 0 ? '#88ccff' : '#ffaa88');
+        }
 
         this.turnText.setText(`Player ${this.currentPlayer}'s Turn`);
         this.turnText.setColor(this.currentPlayer === 1 ? '#ff4444' : '#4444ff');
@@ -453,7 +460,9 @@ class PlayScene extends Phaser.Scene {
         // Yellow dotted trajectory - easier to see against the game background
         for (let i = 0; i < 50; i++) {
             const dt = 0.05;
-            pvx += this.wind * 0.5;
+            if (this.windEnabled) {
+                pvx += this.wind * 0.5;
+            }
             pvy += 300 * dt;
 
             x += pvx;
@@ -505,7 +514,9 @@ class PlayScene extends Phaser.Scene {
         );
 
         this.projectile.body.setAllowGravity(true);
-        this.projectile.wind = this.wind;
+        if (this.windEnabled) {
+            this.projectile.wind = this.wind;
+        }
         this.projectile.shooter = this.currentPlayer; // Tag projectile with shooter
 
         // Create projectile trail particles
@@ -684,7 +695,7 @@ class PlayScene extends Phaser.Scene {
             // Check if projectile is out of bounds or hit ground
             if (this.projectile) {
                 // Apply wind force to projectile
-                if (this.projectile.visible && this.projectile.body.velocity.x !== 0) {
+                if (this.windEnabled && this.projectile.visible && this.projectile.body.velocity.x !== 0) {
                     this.projectile.body.velocity.x += this.wind * 0.5;
                 }
 
@@ -785,6 +796,13 @@ class PlayScene extends Phaser.Scene {
         // Shooting (keyboard)
         if (Phaser.Input.Keyboard.JustDown(this.keys.space)) {
             this.shoot();
+        }
+
+        // Wind toggle (H key)
+        if (Phaser.Input.Keyboard.JustDown(this.keys.h)) {
+            this.windEnabled = !this.windEnabled;
+            this.updateUI();
+            this.drawTrajectory();
         }
     }
 }
