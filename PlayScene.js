@@ -162,6 +162,11 @@ class PlayScene extends Phaser.Scene {
             .setInteractive({ useHandCursor: true })
             .setAlpha(0.9);
 
+        // WIND Toggle Button - above fire button, center
+        this.windBtn = this.add.image(300, 640, 'touch_wind_btn')
+            .setInteractive({ useHandCursor: true })
+            .setAlpha(0.85);
+
         // Button labels
         this.add.text(60, btnY, '◀', {
             fontSize: '28px',
@@ -190,6 +195,14 @@ class PlayScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
+        // WIND label
+        this.windBtnLabel = this.add.text(300, 640, 'WIND', {
+            fontSize: '18px',
+            fontFamily: 'Segoe UI, sans-serif',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
         // Touch input handling
         this.setupTouchInput();
 
@@ -206,6 +219,7 @@ class PlayScene extends Phaser.Scene {
         setupHover(this.powerDownBtn);
         setupHover(this.powerUpBtn);
         setupHover(this.fireBtn);
+        setupHover(this.windBtn);
     }
 
     createTouchButtonTextures() {
@@ -280,6 +294,35 @@ class PlayScene extends Phaser.Scene {
         fireGraphics.lineStyle(4, 0xff5555, 1);
         fireGraphics.strokeRoundedRect(0, 0, 120, 50, 25);
         fireGraphics.generateTexture('touch_fire_btn', 120, 50);
+
+        // Wind toggle button
+        const windGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        windGraphics.fillStyle(0x33aa55, 1);
+        windGraphics.fillRoundedRect(0, 0, 80, 50, 12);
+        windGraphics.lineStyle(3, 0x55cc77, 1);
+        windGraphics.strokeRoundedRect(0, 0, 80, 50, 12);
+        // Wind symbol (curved arrow)
+        windGraphics.lineStyle(3, 0xffffff, 1);
+        windGraphics.beginPath();
+        windGraphics.moveTo(20, 30);
+        windGraphics.lineTo(45, 30);
+        windGraphics.arc(45, 22, 8, Phaser.Math.DegToRad(-90), Phaser.Math.DegToRad(90), false);
+        windGraphics.moveTo(45, 30);
+        windGraphics.lineTo(60, 20);
+        windGraphics.stroke();
+        windGraphics.generateTexture('touch_wind_btn', 80, 50);
+
+        // Wind button OFF state
+        const windOffGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        windOffGraphics.fillStyle(0x555555, 1);
+        windOffGraphics.fillRoundedRect(0, 0, 80, 50, 12);
+        windOffGraphics.lineStyle(3, 0x777777, 1);
+        windOffGraphics.strokeRoundedRect(0, 0, 80, 50, 12);
+        // Wind symbol crossed out (X)
+        windOffGraphics.lineStyle(3, 0xaaaaaa, 1);
+        windOffGraphics.lineBetween(20, 20, 35, 35);
+        windOffGraphics.lineBetween(35, 20, 20, 35);
+        windOffGraphics.generateTexture('touch_wind_btn_off', 80, 50);
     }
 
     setupTouchInput() {
@@ -352,6 +395,25 @@ class PlayScene extends Phaser.Scene {
         this.fireBtn.on('pointerout', () => {
             this.fireBtn.setScale(1);
         });
+
+        // Wind toggle button
+        this.windBtn.on('pointerdown', () => {
+            this.windEnabled = !this.windEnabled;
+            this.updateUI();
+            this.drawTrajectory();
+            this.updateWindButtonVisual();
+        });
+    }
+
+    updateWindButtonVisual() {
+        // Update wind button texture and label color based on windEnabled state
+        if (this.windEnabled) {
+            this.windBtn.setTexture('touch_wind_btn');
+            this.windBtnLabel.setColor('#ffffff');
+        } else {
+            this.windBtn.setTexture('touch_wind_btn_off');
+            this.windBtnLabel.setColor('#aaaaaa');
+        }
     }
 
     setupInput() {
@@ -418,6 +480,11 @@ class PlayScene extends Phaser.Scene {
 
         this.p1HealthBar.setScale(this.player1Health / 100, 1);
         this.p2HealthBar.setScale(this.player2Health / 100, 1);
+
+        // Update wind button visual state
+        if (this.windBtn) {
+            this.updateWindButtonVisual();
+        }
     }
 
     updatePowerBar(power) {
