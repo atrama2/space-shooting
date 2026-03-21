@@ -480,6 +480,7 @@ class PlayScene extends Phaser.Scene {
         this.aimGraphics.clear();
 
         const player = this.currentPlayer === 1 ? this.player1 : this.player2;
+        this.shooter = this.currentPlayer; // Track who fired this projectile
         const direction = this.currentPlayer === 1 ? 1 : -1;
         const angleRad = Phaser.Math.DegToRad(this.angle * direction);
 
@@ -497,14 +498,63 @@ class PlayScene extends Phaser.Scene {
 
         this.projectile.body.setAllowGravity(true);
         this.projectile.wind = this.wind;
+        this.projectile.shooter = this.currentPlayer; // Tag projectile with shooter
+
+        // Create projectile trail particles
+        this.createProjectileTrail();
 
         // Collision with players
         this.physics.add.overlap(this.projectile, this.player1, this.hitPlayer, null, this);
         this.physics.add.overlap(this.projectile, this.player2, this.hitPlayer, null, this);
     }
 
+    createProjectileTrail() {
+        // Create particle texture for trail
+        if (!this.textures.exists('trail_particle')) {
+            const trailGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+            trailGraphics.fillStyle(0xffff00, 1);
+            trailGraphics.fillCircle(8, 8, 8);
+            trailGraphics.generateTexture('trail_particle', 16, 16);
+        }
+
+        // Create particle emitter for trail
+        this.trailEmitter = this.add.particles(0, 0, 'trail_particle', {
+            speed: 10,
+            scale: { start: 0.6, end: 0 },
+            alpha: { start: 0.8, end: 0 },
+            lifespan: 300,
+            frequency: 20,
+            tint: [0xffff00, 0xffaa00, 0xff8800],
+            emitting: false
+        });
+
+        // Start emitting from projectile position
+        if (this.projectile) {
+            this.trailEmitter.startFollow(this.projectile, {
+                x: 0,
+                y: 0,
+                emitFrom: true
+            });
+            this.trailEmitter.start();
+        }
+    }
+
+    stopProjectileTrail() {
+        if (this.trailEmitter) {
+            this.trailEmitter.stop();
+            this.trailEmitter.destroy();
+            this.trailEmitter = null;
+        }
+    }
+
     hitPlayer(projectile, player) {
         const target = player === this.player1 ? 1 : 2;
+        
+        // Prevent shooter from damaging themselves
+        if (projectile.shooter === target) {
+            return;
+        }
+
         const damage = this.power * 0.5;
 
         if (target === 1) {
@@ -514,6 +564,7 @@ class PlayScene extends Phaser.Scene {
         }
 
         this.createExplosion(projectile.x, projectile.y);
+        this.stopProjectileTrail();
         this.destroyProjectile();
 
         this.updateUI();
@@ -536,6 +587,7 @@ class PlayScene extends Phaser.Scene {
     }
 
     destroyProjectile() {
+        this.stopProjectileTrail();
         if (this.projectile) {
             this.projectile.destroy();
             this.projectile = null;
@@ -630,9 +682,11 @@ class PlayScene extends Phaser.Scene {
 
                 if (this.projectile.y > 720) {
                     this.createExplosion(this.projectile.x, 720);
+                    this.stopProjectileTrail();
                     this.destroyProjectile();
                     this.endTurn();
                 } else if (this.projectile.x < -50 || this.projectile.x > 650) {
+                    this.stopProjectileTrail();
                     this.destroyProjectile();
                     this.endTurn();
                 }
