@@ -75,7 +75,7 @@ class PlayScene extends Phaser.Scene {
 
         // Player 1 health bar (top left)
         this.add.image(70, 30, 'health_bar_bg').setOrigin(0.5);
-        this.p1HealthBar = this.add.image(10, 30, 'health_bar_p1').setOrigin(0, 0.5);
+        this.p1HealthBar = this.add.image(-30, 30, 'health_bar_p1').setOrigin(0, 0.5);
 
         this.p1HealthText = this.add.text(10, 55, 'P1: 100 HP', {
             fontSize: '14px',
@@ -86,7 +86,7 @@ class PlayScene extends Phaser.Scene {
 
         // Player 2 health bar (top right)
         this.add.image(530, 30, 'health_bar_bg').setOrigin(0.5);
-        this.p2HealthBar = this.add.image(370, 30, 'health_bar_p2').setOrigin(0, 0.5);
+        this.p2HealthBar = this.add.image(430, 30, 'health_bar_p2').setOrigin(0, 0.5);
 
         this.p2HealthText = this.add.text(530, 55, 'P2: 100 HP', {
             fontSize: '14px',
