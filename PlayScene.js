@@ -490,7 +490,7 @@ class PlayScene extends Phaser.Scene {
         const player = this.currentPlayer === 1 ? this.player1 : this.player2;
         this.shooter = this.currentPlayer; // Track who fired this projectile
         const direction = this.currentPlayer === 1 ? 1 : -1;
-        const angleRad = Phaser.Math.DegToRad(this.angle * direction);
+        const angleRad = Phaser.Math.DegToRad(this.angle);
 
         this.projectile = this.physics.add.sprite(
             player.x + (direction * 30),
@@ -500,7 +500,7 @@ class PlayScene extends Phaser.Scene {
 
         const velocity = this.power * 8;
         this.projectile.setVelocity(
-            Math.cos(angleRad) * velocity,
+            Math.cos(angleRad) * velocity * direction,
             -Math.sin(angleRad) * velocity
         );
 
