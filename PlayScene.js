@@ -791,7 +791,7 @@ class PlayScene extends Phaser.Scene {
         } else if (this.keys.right.isDown) {
             if (!this.keysPressed['right']) {
                 this.keysPressed['right'] = true;
-                this.angle = Math.max(10, this.angle - 5);
+                this.angle = Math.max(0, this.angle - 5);
                 this.updatePowerBar(this.power);
                 this.updateUI();
                 this.drawTrajectory();
@@ -825,7 +825,7 @@ class PlayScene extends Phaser.Scene {
             this.drawTrajectory();
         }
         if (this.touchState.angleUp) {
-            this.angle = Math.max(10, this.angle - 5);
+            this.angle = Math.max(0, this.angle - 5);
             this.updatePowerBar(this.power);
             this.updateUI();
             this.drawTrajectory();
