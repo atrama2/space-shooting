@@ -530,9 +530,8 @@ class PlayScene extends Phaser.Scene {
             if (this.windEnabled) {
                 pvx += this.wind * 0.5;
             }
-            pvy += 300 * dt;
 
-            x += pvx;
+            x += pvx * dt;
             y += pvy * dt;
 
             if (y > 720 || x < 0 || x > 600) {
@@ -541,7 +540,7 @@ class PlayScene extends Phaser.Scene {
 
             // Draw dashed line segment (short line every 3 steps)
             if (i % 3 === 0) {
-                const prevX = x - pvx;
+                const prevX = x - pvx * dt;
                 const prevY = y - pvy * dt;
                 this.aimGraphics.lineStyle(2, 0xffff00, 0.6);
                 this.aimGraphics.lineBetween(prevX, prevY, x, y);
