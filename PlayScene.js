@@ -484,28 +484,28 @@ class PlayScene extends Phaser.Scene {
 
         const graphics = this.make.graphics({ x: 0, y: 0, add: false });
 
-        // Bird body (small oval)
-        graphics.fillStyle(0x222233, 1);
-        graphics.fillEllipse(10, 10, 6, 4);
+        // Bird body (small oval) - larger and brighter
+        graphics.fillStyle(0x444455, 1);
+        graphics.fillEllipse(20, 20, 12, 8);
 
-        // Left wing (V-shape)
-        graphics.fillStyle(0x222233, 1);
+        // Left wing (V-shape) - larger
+        graphics.fillStyle(0x444455, 1);
         graphics.beginPath();
-        graphics.moveTo(7, 9);
-        graphics.lineTo(0, 4);
-        graphics.lineTo(5, 8);
+        graphics.moveTo(14, 18);
+        graphics.lineTo(0, 8);
+        graphics.lineTo(10, 16);
         graphics.closePath();
         graphics.fillPath();
 
-        // Right wing (V-shape)
+        // Right wing (V-shape) - larger
         graphics.beginPath();
-        graphics.moveTo(13, 9);
-        graphics.lineTo(20, 4);
-        graphics.lineTo(15, 8);
+        graphics.moveTo(26, 18);
+        graphics.lineTo(40, 8);
+        graphics.lineTo(30, 16);
         graphics.closePath();
         graphics.fillPath();
 
-        graphics.generateTexture('bird', 20, 14);
+        graphics.generateTexture('bird', 40, 28);
     }
 
     spawnBirds() {
@@ -518,8 +518,9 @@ class PlayScene extends Phaser.Scene {
             const depth = i / (birdCount - 1);
 
             // Smaller and more transparent birds are farther away
-            const scale = 0.5 + depth * 0.6; // 0.5 to 1.1
-            const alpha = 0.4 + depth * 0.5; // 0.4 to 0.9
+            // Closer birds are more prominent (scale 0.6 to 1.4)
+            const scale = 0.6 + depth * 0.8;
+            const alpha = 0.5 + depth * 0.5; // 0.5 to 1.0
 
             // Speed varies - farther birds appear slower
             const speed = 20 + depth * 40; // 20 to 60 pixels per second
@@ -532,10 +533,13 @@ class PlayScene extends Phaser.Scene {
             const sineFrequency = 0.5 + Math.random() * 1.5;
             const sineOffset = Math.random() * Math.PI * 2;
 
-            const bird = this.add.image(-50 - Math.random() * 200, baseY, 'bird');
+            // Spawn within visible screen area (0 to 400) instead of off-screen left
+            const spawnX = Math.random() * 400;
+            const bird = this.add.image(spawnX, baseY, 'bird');
             bird.setScale(scale);
             bird.setAlpha(alpha);
-            bird.setTint(0x333344); // Slight blue tint for distant birds
+            bird.setTint(0x444455); // Brighter tint
+            bird.setDepth(5); // Above background, below terrain/players
 
             // Store bird properties for animation
             bird.birdData = {
