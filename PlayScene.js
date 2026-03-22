@@ -707,6 +707,7 @@ class PlayScene extends Phaser.Scene {
 
     showWinScreen(winner) {
         this.gameOver = true;
+        this.isShooting = false;
 
         this.aimGraphics.clear();
 
