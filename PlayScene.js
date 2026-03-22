@@ -561,7 +561,8 @@ class PlayScene extends Phaser.Scene {
         const player = this.currentPlayer === 1 ? this.player1 : this.player2;
         this.shooter = this.currentPlayer; // Track who fired this projectile
         const direction = this.currentPlayer === 1 ? 1 : -1;
-        const angleRad = Phaser.Math.DegToRad(-this.angle);
+        // Use the same angle calculation as drawTrajectory for consistency
+        const angleRad = Phaser.Math.DegToRad(this.currentPlayer === 1 ? -this.angle : this.angle);
 
         this.projectile = this.physics.add.sprite(
             player.x + (direction * 30),
@@ -580,6 +581,7 @@ class PlayScene extends Phaser.Scene {
             this.projectile.wind = this.wind;
         }
         this.projectile.shooter = this.currentPlayer; // Tag projectile with shooter
+        this.projectile.hitConfirmed = false; // Prevent double-hit from overlap
 
         // Create projectile trail particles
         this.createProjectileTrail();
@@ -630,6 +632,12 @@ class PlayScene extends Phaser.Scene {
     }
 
     hitPlayer(projectile, player) {
+        // Prevent double-hit from physics overlap
+        if (projectile.hitConfirmed) {
+            return;
+        }
+        projectile.hitConfirmed = true;
+
         const target = player === this.player1 ? 1 : 2;
         
         // Prevent shooter from damaging themselves
@@ -759,9 +767,10 @@ class PlayScene extends Phaser.Scene {
         if (this.isShooting) {
             // Check if projectile is out of bounds or hit ground
             if (this.projectile) {
-                // Apply wind force to projectile
+                // Apply wind force to projectile (use delta time to be frame-rate independent)
                 if (this.windEnabled && this.projectile.visible && this.projectile.body.velocity.x !== 0) {
-                    this.projectile.body.velocity.x += this.wind * 0.5;
+                    const windForce = this.wind * 0.01 * this.game.loop.delta;
+                    this.projectile.body.velocity.x += windForce;
                 }
 
                 if (this.projectile.y > 720) {
