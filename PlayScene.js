@@ -9,6 +9,7 @@ class PlayScene extends Phaser.Scene {
 
     create() {
         this.initTerrainHeightMap();
+        this.setupBackground(); // Create background ONCE (nebula, planet, stars)
         this.setupGround();
         this.setupPlayers();
         this.setupDustParticles();
@@ -16,6 +17,39 @@ class PlayScene extends Phaser.Scene {
         this.setupTouchControls();
         this.setupInput();
         this.initGameState();
+    }
+
+    setupBackground() {
+        // Nebula gradient background (drawn once)
+        const nebula = this.add.graphics();
+        nebula.fillGradientStyle(0x1a0a2e, 0x1a0a2e, 0x0d1b3e, 0x0d1b3e, 1);
+        nebula.fillRect(0, 0, 600, 720);
+        this.backgroundNebula = nebula;
+
+        // Distant planet with ring
+        const planet = this.add.graphics();
+        planet.fillStyle(0x4a3060, 1);
+        planet.fillCircle(520, 120, 60);
+        planet.fillStyle(0x5a4070, 1);
+        planet.fillCircle(510, 115, 55);
+        planet.fillStyle(0x6a5080, 1);
+        planet.fillCircle(500, 110, 45);
+        planet.lineStyle(3, 0x8a70a0, 0.6);
+        planet.strokeEllipse(520, 120, 140, 30);
+        this.backgroundPlanet = planet;
+
+        // Create star field (once)
+        this.createStarField();
+
+        // Draw initial grass tufts (stored for redraw)
+        this.grassTufts = [];
+        for (let x = 20; x < 600; x += Phaser.Math.Between(25, 40)) {
+            const terrainY = this.getTerrainY(x);
+            if (terrainY < 760) {
+                const tuft = this.add.image(x, terrainY - 8, 'grass_tuft').setScale(Phaser.Math.FloatBetween(0.8, 1.2));
+                this.grassTufts.push(tuft);
+            }
+        }
     }
 
     initTerrainHeightMap() {
@@ -140,27 +174,8 @@ class PlayScene extends Phaser.Scene {
     }
 
     redrawTerrain() {
-        // Clear and redraw the terrain graphics
+        // Only redraw terrain graphics (background is already set up in create)
         this.terrainGraphics.clear();
-
-        // Redraw nebula background
-        const nebula = this.add.graphics();
-        nebula.fillGradientStyle(0x1a0a2e, 0x1a0a2e, 0x0d1b3e, 0x0d1b3e, 1);
-        nebula.fillRect(0, 0, 600, 720);
-
-        // Redraw distant planet
-        const planet = this.add.graphics();
-        planet.fillStyle(0x4a3060, 1);
-        planet.fillCircle(520, 120, 60);
-        planet.fillStyle(0x5a4070, 1);
-        planet.fillCircle(510, 115, 55);
-        planet.fillStyle(0x6a5080, 1);
-        planet.fillCircle(500, 110, 45);
-        planet.lineStyle(3, 0x8a70a0, 0.6);
-        planet.strokeEllipse(520, 120, 140, 30);
-
-        // Redraw stars
-        this.createStarField();
 
         // Draw terrain fill with gradient based on heightmap
         this.terrainGraphics.fillStyle(0x2a4a2a, 1);
@@ -200,13 +215,7 @@ class PlayScene extends Phaser.Scene {
         this.terrainGraphics.fillCircle(450, 720, 45);
         this.terrainGraphics.fillCircle(550, 720, 30);
 
-        // Grass tufts
-        for (let x = 20; x < 600; x += Phaser.Math.Between(25, 40)) {
-            const terrainY = this.getTerrainY(x);
-            if (terrainY < 760) {
-                this.add.image(x, terrainY - 8, 'grass_tuft').setScale(Phaser.Math.FloatBetween(0.8, 1.2));
-            }
-        }
+        // Note: Grass tufts and terrain details are drawn once in setupGround, not every redraw
     }
 
     setupGround() {
