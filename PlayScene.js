@@ -510,7 +510,7 @@ class PlayScene extends Phaser.Scene {
 
         const player = this.currentPlayer === 1 ? this.player1 : this.player2;
         const direction = this.currentPlayer === 1 ? 1 : -1;
-        const angleRad = Phaser.Math.DegToRad(-this.angle);
+        const angleRad = Phaser.Math.DegToRad(this.currentPlayer === 1 ? -this.angle : this.angle);
 
         const startX = player.x + (direction * 30);
         const startY = player.y - 15;
@@ -524,12 +524,8 @@ class PlayScene extends Phaser.Scene {
         let pvx = vx;
         let pvy = vy;
 
-        // Yellow dotted trajectory - easier to see against the game background
         for (let i = 0; i < 50; i++) {
             const dt = 0.05;
-            if (this.windEnabled) {
-                pvx += this.wind * 0.5;
-            }
 
             x += pvx * dt;
             y += pvy * dt;
@@ -589,6 +585,7 @@ class PlayScene extends Phaser.Scene {
         this.createProjectileTrail();
 
         // Collision with players
+        this.physics.world.overlaps.clear();
         this.physics.add.overlap(this.projectile, this.player1, this.hitPlayer, null, this);
         this.physics.add.overlap(this.projectile, this.player2, this.hitPlayer, null, this);
     }
@@ -650,7 +647,9 @@ class PlayScene extends Phaser.Scene {
 
         this.createExplosion(projectile.x, projectile.y);
         this.stopProjectileTrail();
-        this.destroyProjectile();
+        if (this.projectile) {
+            this.destroyProjectile();
+        }
 
         this.updateUI();
         this.checkWinCondition();
