@@ -582,6 +582,7 @@ class PlayScene extends Phaser.Scene {
         }
         this.projectile.shooter = this.currentPlayer; // Tag projectile with shooter
         this.projectile.hitConfirmed = false; // Prevent double-hit from overlap
+        this.projectile.body.setCircle(8);
 
         // Create projectile trail particles
         this.createProjectileTrail();
@@ -771,6 +772,22 @@ class PlayScene extends Phaser.Scene {
                 if (this.windEnabled && this.projectile.visible && this.projectile.body.velocity.x !== 0) {
                     const windForce = this.wind * 0.01 * this.game.loop.delta;
                     this.projectile.body.velocity.x += windForce;
+                }
+
+                if (!this.projectile.hitConfirmed) {
+                    const dx1 = this.projectile.x - this.player1.x;
+                    const dy1 = this.projectile.y - this.player1.y;
+                    const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                    if (dist1 < 30) {
+                        this.hitPlayer(this.projectile, this.player1);
+                    } else {
+                        const dx2 = this.projectile.x - this.player2.x;
+                        const dy2 = this.projectile.y - this.player2.y;
+                        const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                        if (dist2 < 30) {
+                            this.hitPlayer(this.projectile, this.player2);
+                        }
+                    }
                 }
 
                 if (this.projectile.y > 720) {
