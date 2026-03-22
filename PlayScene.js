@@ -16,7 +16,219 @@ class PlayScene extends Phaser.Scene {
         this.setupUI();
         this.setupTouchControls();
         this.setupInput();
+        this.setupSound();
         this.initGameState();
+    }
+
+    setupSound() {
+        // Create audio context for procedural sounds
+        this.audioContext = this.sound.context;
+
+        // Wind sound state
+        this.windSound = null;
+        this.windNoiseNode = null;
+        this.windGainNode = null;
+    }
+
+    playSound(type) {
+        const ctx = this.audioContext;
+        if (!ctx) return;
+
+        const now = ctx.currentTime;
+
+        switch (type) {
+            case 'shoot': {
+                // Short 'pew' tone - high frequency sweep down
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(1200, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
+            }
+
+            case 'explosion': {
+                // Noise burst with low frequency rumble
+                const bufferSize = ctx.sampleRate * 0.3;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                }
+
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.4, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, now);
+                filter.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(ctx.destination);
+
+                noise.start(now);
+
+                // Low rumble oscillator
+                const osc = ctx.createOscillator();
+                const oscGain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+                oscGain.gain.setValueAtTime(0.3, now);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+                osc.connect(oscGain);
+                oscGain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.2);
+                break;
+            }
+
+            case 'hit': {
+                // Impact thud - low punch with quick decay
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+                break;
+            }
+
+            case 'move': {
+                // Subtle footstep - short low thud
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(80 + Math.random() * 20, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.05);
+
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.05);
+                break;
+            }
+
+            case 'click': {
+                // UI click - short high-pitched tick
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(600, now + 0.02);
+
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.03);
+                break;
+            }
+        }
+    }
+
+    startWindSound() {
+        if (this.windSound || !this.audioContext) return;
+
+        const ctx = this.audioContext;
+        const now = ctx.currentTime;
+
+        // Create white noise buffer
+        const bufferSize = ctx.sampleRate * 2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        this.windNoiseNode = ctx.createBufferSource();
+        this.windNoiseNode.buffer = buffer;
+        this.windNoiseNode.loop = true;
+
+        // Bandpass filter for wind-like sound
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(400, now);
+        filter.Q.setValueAtTime(0.5, now);
+
+        // LFO for filter sweep
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.setValueAtTime(0.2, now);
+        lfoGain.gain.setValueAtTime(200, now);
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+
+        this.windGainNode = ctx.createGain();
+        this.windGainNode.gain.setValueAtTime(0, now);
+        this.windGainNode.gain.linearRampToValueAtTime(0.08, now + 0.5);
+
+        this.windNoiseNode.connect(filter);
+        filter.connect(this.windGainNode);
+        this.windGainNode.connect(ctx.destination);
+
+        this.windNoiseNode.start(now);
+        lfo.start(now);
+        this.windLfo = lfo;
+    }
+
+    stopWindSound() {
+        if (!this.windSound && !this.windNoiseNode) return;
+
+        const ctx = this.audioContext;
+        const now = ctx.currentTime;
+
+        if (this.windGainNode) {
+            this.windGainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+        }
+
+        if (this.windNoiseNode) {
+            this.windNoiseNode.stop(now + 0.35);
+            this.windNoiseNode = null;
+        }
+
+        if (this.windLfo) {
+            this.windLfo.stop(now + 0.35);
+            this.windLfo = null;
+        }
+
+        this.windSound = false;
     }
 
     setupBackground() {
@@ -391,6 +603,7 @@ class PlayScene extends Phaser.Scene {
         // Start dust particles
         if (!dustEmitterActive) {
             dustEmitter.start();
+            this.playSound('move');
             if (player === this.player1) {
                 this.dustEmitter1Active = true;
             } else {
@@ -922,7 +1135,13 @@ class PlayScene extends Phaser.Scene {
 
         // Wind toggle button
         this.windBtn.on('pointerdown', () => {
+            this.playSound('click');
             this.windEnabled = !this.windEnabled;
+            if (this.windEnabled) {
+                this.startWindSound();
+            } else {
+                this.stopWindSound();
+            }
             this.updateUI();
             this.drawTrajectory();
             this.updateWindButtonVisual();
@@ -986,6 +1205,11 @@ class PlayScene extends Phaser.Scene {
         this.generateWind();
         this.updateUI();
         this.drawTrajectory();
+
+        // Start ambient wind sound if enabled
+        if (this.windEnabled) {
+            this.startWindSound();
+        }
     }
 
     generateWind() {
@@ -1099,6 +1323,7 @@ class PlayScene extends Phaser.Scene {
 
         this.isShooting = true;
         this.aimGraphics.clear();
+        this.playSound('shoot');
 
         const player = this.currentPlayer === 1 ? this.player1 : this.player2;
         this.shooter = this.currentPlayer; // Track who fired this projectile
@@ -1216,6 +1441,7 @@ class PlayScene extends Phaser.Scene {
         }
 
         this.createExplosion(projectile.x, projectile.y);
+        this.playSound('hit');
         this.stopProjectileTrail();
         if (this.projectile) {
             this.destroyProjectile();
@@ -1414,6 +1640,7 @@ class PlayScene extends Phaser.Scene {
                     const craterRadius = 20 + (this.power / 100) * 20;
                     this.createCrater(this.projectile.x, 720, craterRadius);
                     this.createExplosion(this.projectile.x, 720);
+                    this.playSound('explosion');
 
                     // Adjust all players to new terrain after crater
                     this.adjustPlayersToTerrain();
@@ -1558,7 +1785,13 @@ class PlayScene extends Phaser.Scene {
 
         // Wind toggle (H key)
         if (Phaser.Input.Keyboard.JustDown(this.keys.h)) {
+            this.playSound('click');
             this.windEnabled = !this.windEnabled;
+            if (this.windEnabled) {
+                this.startWindSound();
+            } else {
+                this.stopWindSound();
+            }
             this.updateUI();
             this.drawTrajectory();
         }
