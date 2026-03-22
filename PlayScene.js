@@ -775,14 +775,14 @@ class PlayScene extends Phaser.Scene {
                 }
 
                 if (!this.projectile.hitConfirmed) {
-                    const dx1 = this.projectile.x - this.player1.x;
-                    const dy1 = this.projectile.y - this.player1.y;
+                    const dx1 = this.projectile.body.center.x - this.player1.body.center.x;
+                    const dy1 = this.projectile.body.center.y - this.player1.body.center.y;
                     const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
                     if (dist1 < 30) {
                         this.hitPlayer(this.projectile, this.player1);
                     } else {
-                        const dx2 = this.projectile.x - this.player2.x;
-                        const dy2 = this.projectile.y - this.player2.y;
+                        const dx2 = this.projectile.body.center.x - this.player2.body.center.x;
+                        const dy2 = this.projectile.body.center.y - this.player2.body.center.y;
                         const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
                         if (dist2 < 30) {
                             this.hitPlayer(this.projectile, this.player2);
