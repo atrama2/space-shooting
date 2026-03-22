@@ -585,6 +585,7 @@ class PlayScene extends Phaser.Scene {
         this.createProjectileTrail();
 
         // Collision with players
+        this.physics.world.overlaps.clear();
         this.physics.add.overlap(this.projectile, this.player1, this.hitPlayer, null, this);
         this.physics.add.overlap(this.projectile, this.player2, this.hitPlayer, null, this);
     }
@@ -646,7 +647,9 @@ class PlayScene extends Phaser.Scene {
 
         this.createExplosion(projectile.x, projectile.y);
         this.stopProjectileTrail();
-        this.destroyProjectile();
+        if (this.projectile) {
+            this.destroyProjectile();
+        }
 
         this.updateUI();
         this.checkWinCondition();
