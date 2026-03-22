@@ -1,55 +1,408 @@
 class PlayScene extends Phaser.Scene {
     constructor() {
         super({ key: 'PlayScene' });
+        this.MOVE_SPEED = 150; // pixels per second
+        this.BASE_TERRAIN_Y = 720; // Base ground level
+        this.MIN_TERRAIN_Y = 600; // Highest point (hill)
+        this.MAX_TERRAIN_Y = 760; // Lowest point (valley)
     }
 
     create() {
+        this.initTerrainHeightMap();
         this.setupGround();
         this.setupPlayers();
+        this.setupDustParticles();
         this.setupUI();
         this.setupTouchControls();
         this.setupInput();
         this.initGameState();
     }
 
+    initTerrainHeightMap() {
+        // Initialize terrain heightmap (600 pixels wide, 1 value per pixel)
+        // Lower values = higher terrain (hill), Higher values = lower terrain (valley)
+        this.terrainHeightMap = new Float32Array(600);
+        this.craterMap = new Float32Array(600); // Tracks crater depth at each x
+
+        // Generate procedural terrain with hills and valleys
+        let height = this.BASE_TERRAIN_Y;
+        for (let x = 0; x < 600; x++) {
+            // Layer multiple sine waves for natural-looking terrain
+            const wave1 = Math.sin(x * 0.02) * 30;
+            const wave2 = Math.sin(x * 0.05 + 1) * 15;
+            const wave3 = Math.sin(x * 0.1 + 2) * 8;
+
+            // Add some random bumps
+            const bump = Phaser.Math.Between(-5, 5);
+
+            height = this.BASE_TERRAIN_Y - (wave1 + wave2 + wave3 + bump);
+            height = Phaser.Math.Clamp(height, this.MIN_TERRAIN_Y, this.MAX_TERRAIN_Y);
+
+            this.terrainHeightMap[x] = height;
+            this.craterMap[x] = 0;
+        }
+
+        // Flatten areas under players for better starting positions
+        const p1x = 80;
+        const p2x = 520;
+        for (let x = p1x - 30; x < p1x + 30; x++) {
+            if (x >= 0 && x < 600) {
+                this.terrainHeightMap[x] = 720;
+            }
+        }
+        for (let x = p2x - 30; x < p2x + 30; x++) {
+            if (x >= 0 && x < 600) {
+                this.terrainHeightMap[x] = 720;
+            }
+        }
+    }
+
+    getTerrainY(x) {
+        // Get the terrain height at given x position
+        const clampedX = Phaser.Math.Clamp(Math.floor(x), 0, 599);
+        return this.terrainHeightMap[clampedX];
+    }
+
+    createCrater(x, y, radius) {
+        // Create a crater at impact point
+        const craterRadius = Math.floor(radius);
+        const centerX = Math.floor(x);
+
+        for (let cx = centerX - craterRadius; cx <= centerX + craterRadius; cx++) {
+            if (cx < 0 || cx >= 600) continue;
+
+            const distFromCenter = Math.abs(cx - centerX);
+            if (distFromCenter <= craterRadius) {
+                // Calculate crater depth using a parabolic curve
+                const normalizedDist = distFromCenter / craterRadius;
+                const craterDepth = craterRadius * 0.6 * Math.sqrt(1 - normalizedDist * normalizedDist);
+
+                // Only deepen, don't raise terrain
+                const newHeight = y + craterDepth;
+                if (newHeight > this.terrainHeightMap[cx]) {
+                    this.terrainHeightMap[cx] = Math.min(newHeight, this.MAX_TERRAIN_Y);
+                    this.craterMap[cx] = Math.max(this.craterMap[cx], craterDepth);
+                }
+            }
+        }
+
+        // Redraw terrain to show crater
+        this.redrawTerrain();
+    }
+
+    adjustPlayersToTerrain() {
+        // Adjust player 1 position to terrain
+        const p1TerrainY = this.getTerrainY(this.player1.x);
+        this.player1.y = p1TerrainY - 35;
+
+        // Adjust player 2 position to terrain
+        const p2TerrainY = this.getTerrainY(this.player2.x);
+        this.player2.y = p2TerrainY - 35;
+    }
+
+    handlePlayerMovement() {
+        const delta = this.game.loop.delta;
+        let p1Moving = false;
+        let p2Moving = false;
+
+        // Player 1 movement: W = forward (right), S = backward (left)
+        if (this.keys.p1Forward.isDown) {
+            this.movePlayer(this.player1, this.dustEmitter1, this.dustEmitter1Active, 1, delta);
+            p1Moving = true;
+        } else if (this.keys.p1Backward.isDown) {
+            this.movePlayer(this.player1, this.dustEmitter1, this.dustEmitter1Active, -1, delta);
+            p1Moving = true;
+        }
+
+        // Player 2 movement: Arrow Up = forward (left), Arrow Down = backward (right)
+        if (this.keys.p2Forward.isDown) {
+            this.movePlayer(this.player2, this.dustEmitter2, this.dustEmitter2Active, -1, delta);
+            p2Moving = true;
+        } else if (this.keys.p2Backward.isDown) {
+            this.movePlayer(this.player2, this.dustEmitter2, this.dustEmitter2Active, 1, delta);
+            p2Moving = true;
+        }
+
+        // Stop dust particles when player stops moving
+        if (!p1Moving && this.dustEmitter1 && this.dustEmitter1Active) {
+            this.dustEmitter1.stop();
+            this.dustEmitter1Active = false;
+        }
+        if (!p2Moving && this.dustEmitter2 && this.dustEmitter2Active) {
+            this.dustEmitter2.stop();
+            this.dustEmitter2Active = false;
+        }
+
+        // Update trajectory after movement
+        if (p1Moving || p2Moving) {
+            this.drawTrajectory();
+        }
+    }
+
+    redrawTerrain() {
+        // Clear and redraw the terrain graphics
+        this.terrainGraphics.clear();
+
+        // Redraw nebula background
+        const nebula = this.add.graphics();
+        nebula.fillGradientStyle(0x1a0a2e, 0x1a0a2e, 0x0d1b3e, 0x0d1b3e, 1);
+        nebula.fillRect(0, 0, 600, 720);
+
+        // Redraw distant planet
+        const planet = this.add.graphics();
+        planet.fillStyle(0x4a3060, 1);
+        planet.fillCircle(520, 120, 60);
+        planet.fillStyle(0x5a4070, 1);
+        planet.fillCircle(510, 115, 55);
+        planet.fillStyle(0x6a5080, 1);
+        planet.fillCircle(500, 110, 45);
+        planet.lineStyle(3, 0x8a70a0, 0.6);
+        planet.strokeEllipse(520, 120, 140, 30);
+
+        // Redraw stars
+        this.createStarField();
+
+        // Draw terrain fill with gradient based on heightmap
+        this.terrainGraphics.fillStyle(0x2a4a2a, 1);
+        this.terrainGraphics.beginPath();
+        this.terrainGraphics.moveTo(0, 800);
+
+        for (let x = 0; x < 600; x++) {
+            this.terrainGraphics.lineTo(x, this.terrainHeightMap[x]);
+        }
+
+        this.terrainGraphics.lineTo(600, 800);
+        this.terrainGraphics.closePath();
+        this.terrainGraphics.fillPath();
+
+        // Add terrain gradient overlay
+        for (let x = 0; x < 600; x++) {
+            const terrainY = this.terrainHeightMap[x];
+            const depth = terrainY - this.MIN_TERRAIN_Y;
+            const ratio = depth / (this.MAX_TERRAIN_Y - this.MIN_TERRAIN_Y);
+            const g = Math.floor(42 + ratio * 20);
+            this.terrainGraphics.fillStyle(Phaser.Display.Color.GetColor(g + 20, g + 40, g + 20), 1);
+            this.terrainGraphics.fillRect(x, terrainY, 1, 800 - terrainY);
+        }
+
+        // Surface highlight line
+        this.terrainGraphics.lineStyle(3, 0x4a6a4a, 1);
+        for (let x = 0; x < 600; x++) {
+            if (x < 599) {
+                this.terrainGraphics.lineBetween(x, this.terrainHeightMap[x], x + 1, this.terrainHeightMap[x + 1]);
+            }
+        }
+
+        // Draw terrain bumps/details
+        this.terrainGraphics.fillStyle(0x3a5a3a, 1);
+        this.terrainGraphics.fillCircle(100, 720, 35);
+        this.terrainGraphics.fillCircle(250, 720, 50);
+        this.terrainGraphics.fillCircle(450, 720, 45);
+        this.terrainGraphics.fillCircle(550, 720, 30);
+
+        // Grass tufts
+        for (let x = 20; x < 600; x += Phaser.Math.Between(25, 40)) {
+            const terrainY = this.getTerrainY(x);
+            if (terrainY < 760) {
+                this.add.image(x, terrainY - 8, 'grass_tuft').setScale(Phaser.Math.FloatBetween(0.8, 1.2));
+            }
+        }
+    }
+
     setupGround() {
-        // Ground/planet surface - at bottom for portrait mode
-        const ground = this.add.graphics();
-        ground.fillStyle(0x3a5a3a, 1);
-        ground.fillRect(0, 720, 600, 80);
-        ground.lineStyle(3, 0x2a4a2a, 1);
-        ground.strokeRect(0, 720, 600, 80);
+        // Create terrain graphics object for dynamic updates
+        this.terrainGraphics = this.add.graphics();
+        this.redrawTerrain();
+    }
 
-        // Some terrain details
-        ground.fillStyle(0x4a6a4a, 1);
-        ground.fillCircle(100, 720, 35);
-        ground.fillCircle(250, 720, 50);
-        ground.fillCircle(450, 720, 45);
-        ground.fillCircle(550, 720, 30);
-
-        // Stars background
-        const stars = this.add.graphics();
-        stars.fillStyle(0xffffff, 0.6);
-        for (let i = 0; i < 120; i++) {
+    createStarField() {
+        // Layer 1: Distant tiny stars (slowest, smallest)
+        const stars1 = this.add.graphics();
+        stars1.fillStyle(0x888888, 0.4);
+        for (let i = 0; i < 80; i++) {
             const x = Phaser.Math.Between(0, 600);
             const y = Phaser.Math.Between(0, 700);
-            const size = Phaser.Math.FloatBetween(0.5, 2);
-            stars.fillCircle(x, y, size);
+            stars1.fillCircle(x, y, 0.5);
+        }
+        this.starField1 = stars1;
+
+        // Layer 2: Medium stars
+        const stars2 = this.add.graphics();
+        stars2.fillStyle(0xaaaaaa, 0.6);
+        for (let i = 0; i < 50; i++) {
+            const x = Phaser.Math.Between(0, 600);
+            const y = Phaser.Math.Between(0, 700);
+            stars2.fillCircle(x, y, 1);
+        }
+        this.starField2 = stars2;
+        this.twinkleStars = [];
+
+        // Layer 3: Bright twinkling stars
+        for (let i = 0; i < 15; i++) {
+            const x = Phaser.Math.Between(50, 550);
+            const y = Phaser.Math.Between(50, 600);
+            const star = this.add.image(x, y, 'star_large').setAlpha(0.8);
+            this.twinkleStars.push(star);
+        }
+
+        // Layer 4: Foreground accent stars
+        const stars4 = this.add.graphics();
+        stars4.fillStyle(0xffffff, 0.8);
+        for (let i = 0; i < 20; i++) {
+            const x = Phaser.Math.Between(0, 600);
+            const y = Phaser.Math.Between(0, 700);
+            stars4.fillCircle(x, y, 1.5);
         }
     }
 
     setupPlayers() {
-        // Player 1 (red) - bottom left corner
-        this.player1 = this.physics.add.sprite(80, 650, 'ship_p1');
+        // Get terrain Y for player starting positions
+        const p1TerrainY = this.getTerrainY(80);
+        const p2TerrainY = this.getTerrainY(520);
+
+        // Player 1 (red) - positioned on terrain
+        this.player1 = this.physics.add.sprite(80, p1TerrainY - 35, 'ship_p1');
         this.player1.setCollideWorldBounds(true);
         this.player1.body.setAllowGravity(false);
         this.player1.setImmovable(true);
+        this.player1.lastX = 80; // Track for movement
 
-        // Player 2 (blue) - bottom right corner
-        this.player2 = this.physics.add.sprite(520, 650, 'ship_p2');
+        // Player 1 glow effect
+        this.player1Glow = this.add.graphics();
+        this.player1Glow.fillStyle(0xff4444, 0.15);
+        this.player1Glow.fillCircle(80, p1TerrainY - 35, 45);
+        this.player1Glow.setBlendMode(Phaser.BlendModes.ADD);
+
+        // Player 2 (blue) - positioned on terrain
+        this.player2 = this.physics.add.sprite(520, p2TerrainY - 35, 'ship_p2');
         this.player2.setCollideWorldBounds(true);
         this.player2.body.setAllowGravity(false);
         this.player2.setImmovable(true);
+        this.player2.lastX = 520; // Track for movement
+
+        // Player 2 glow effect
+        this.player2Glow = this.add.graphics();
+        this.player2Glow.fillStyle(0x4444ff, 0.15);
+        this.player2Glow.fillCircle(520, p2TerrainY - 35, 45);
+        this.player2Glow.setBlendMode(Phaser.BlendModes.ADD);
+
+        // Engine exhaust emitters for idle ships
+        this.setupEngineExhaust();
+    }
+
+    setupEngineExhaust() {
+        // Create particle emitter for engine exhaust
+        this.exhaustEmitter1 = this.add.particles(0, 0, 'exhaust_particle', {
+            speed: { min: 20, max: 40 },
+            scale: { start: 0.5, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            lifespan: 400,
+            frequency: 100,
+            tint: [0xff6600, 0xffaa00, 0xffcc00],
+            emitFrom: { x: -20, y: 15 },
+            emitting: false
+        });
+        this.exhaustEmitter1.startFollow(this.player1);
+
+        this.exhaustEmitter2 = this.add.particles(0, 0, 'exhaust_particle', {
+            speed: { min: 20, max: 40 },
+            scale: { start: 0.5, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            lifespan: 400,
+            frequency: 100,
+            tint: [0x0066ff, 0x00aaff, 0x00ccff],
+            emitFrom: { x: -20, y: 15 },
+            emitting: false
+        });
+        this.exhaustEmitter2.startFollow(this.player2);
+
+        // Start idle exhaust
+        this.exhaustEmitter1.start();
+        this.exhaustEmitter2.start();
+    }
+
+    setupDustParticles() {
+        // Create dust particle texture
+        if (!this.textures.exists('dust_particle')) {
+            const dustGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+            dustGraphics.fillStyle(0x8B7355, 1);
+            dustGraphics.fillCircle(6, 6, 6);
+            dustGraphics.fillStyle(0xA0906E, 1);
+            dustGraphics.fillCircle(6, 6, 3);
+            dustGraphics.generateTexture('dust_particle', 12, 12);
+        }
+
+        // Player 1 dust emitter (tracks behind when moving left/right)
+        this.dustEmitter1 = this.add.particles(0, 0, 'dust_particle', {
+            speed: { min: 20, max: 50 },
+            scale: { start: 0.6, end: 0 },
+            alpha: { start: 0.7, end: 0 },
+            lifespan: 500,
+            frequency: 50,
+            tint: [0x8B7355, 0xA0906E, 0x9B8B7A],
+            emitFrom: { x: 0, y: 10 },
+            emitting: false
+        });
+
+        // Player 2 dust emitter
+        this.dustEmitter2 = this.add.particles(0, 0, 'dust_particle', {
+            speed: { min: 20, max: 50 },
+            scale: { start: 0.6, end: 0 },
+            alpha: { start: 0.7, end: 0 },
+            lifespan: 500,
+            frequency: 50,
+            tint: [0x8B7355, 0xA0906E, 0x9B8B7A],
+            emitFrom: { x: 0, y: 10 },
+            emitting: false
+        });
+
+        // Track dust emitter state
+        this.dustEmitter1Active = false;
+        this.dustEmitter2Active = false;
+    }
+
+    movePlayer(player, dustEmitter, dustEmitterActive, direction, delta) {
+        // direction: 1 = forward (right for P1, left for P2), -1 = backward
+        const speed = this.MOVE_SPEED * direction * (delta / 1000);
+        const newX = player.x + speed;
+
+        // Boundary checks
+        const minX = 50;
+        const maxX = player === this.player1 ? 300 : 550;
+        const clampedX = Phaser.Math.Clamp(newX, minX, maxX);
+
+        // Update player X position
+        player.x = clampedX;
+        player.lastX = clampedX;
+
+        // Adjust Y to terrain surface
+        const terrainY = this.getTerrainY(clampedX);
+        player.y = terrainY - 35;
+
+        // Start dust particles
+        if (!dustEmitterActive) {
+            dustEmitter.start();
+            if (player === this.player1) {
+                this.dustEmitter1Active = true;
+            } else {
+                this.dustEmitter2Active = true;
+            }
+        }
+
+        // Position dust emitter behind player
+        dustEmitter.setPosition(clampedX - direction * 20, terrainY - 10);
+    }
+
+    updatePlayerGlow(playerNum, x, y) {
+        if (playerNum === 1 && this.player1Glow) {
+            this.player1Glow.clear();
+            this.player1Glow.fillStyle(0xff4444, 0.15);
+            this.player1Glow.fillCircle(x, y, 45);
+        } else if (playerNum === 2 && this.player2Glow) {
+            this.player2Glow.clear();
+            this.player2Glow.fillStyle(0x4444ff, 0.15);
+            this.player2Glow.fillCircle(x, y, 45);
+        }
     }
 
     setupUI() {
@@ -119,7 +472,7 @@ class PlayScene extends Phaser.Scene {
         });
 
         // Controls help (top area)
-        this.controlsText = this.add.text(300, 110, 'A/D: Angle  |  W/S: Power  |  SPACE: Shoot  |  H: Wind Toggle', {
+        this.controlsText = this.add.text(300, 110, 'A/D: Angle  |  Q/E or SHIFT: Power  |  W/S or Arrows: Move  |  SPACE: Shoot  |  H: Wind Toggle', {
             fontSize: '12px',
             fontFamily: 'Segoe UI, sans-serif',
             color: '#666666'
@@ -424,11 +777,23 @@ class PlayScene extends Phaser.Scene {
             upArrow: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
             downArrow: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
             r: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R),
-            h: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H)
+            h: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H),
+            // New keys for player movement
+            p1Forward: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+            p1Backward: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+            p2Forward: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
+            p2Backward: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+            // New keys for power (replacing W/S and Arrow for power)
+            p1PowerUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+            p1PowerDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+            p2PowerUp: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT_LEFT),
+            p2PowerDown: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT_RIGHT)
         };
 
         // Track which keys are held for continuous adjustment
         this.keysPressed = {};
+        // Track player movement state
+        this.playerMoving = { 1: false, 2: false };
     }
 
     initGameState() {
@@ -586,6 +951,9 @@ class PlayScene extends Phaser.Scene {
         this.projectile.hitConfirmed = false; // Prevent double-hit from overlap
         this.projectile.body.setCircle(8);
 
+        // Muzzle flash effect
+        this.createMuzzleFlash(player.x + (direction * 30), player.y - 15);
+
         // Create projectile trail particles
         this.createProjectileTrail();
 
@@ -593,6 +961,22 @@ class PlayScene extends Phaser.Scene {
         // Overlaps auto-clear when objects destroyed
         this.physics.add.overlap(this.projectile, this.player1, this.hitPlayer, null, this);
         this.physics.add.overlap(this.projectile, this.player2, this.hitPlayer, null, this);
+    }
+
+    createMuzzleFlash(x, y) {
+        const flash = this.add.image(x, y, 'muzzle_flash');
+        flash.setScale(1.5);
+        flash.setBlendMode(Phaser.BlendModes.ADD);
+
+        this.tweens.add({
+            targets: flash,
+            scale: 0,
+            alpha: 0,
+            duration: 100,
+            onComplete: () => {
+                flash.destroy();
+            }
+        });
     }
 
     createProjectileTrail() {
@@ -667,6 +1051,10 @@ class PlayScene extends Phaser.Scene {
     }
 
     createExplosion(x, y) {
+        // Screen shake on impact
+        this.cameras.main.shake(200, 0.01);
+
+        // Main explosion sprite
         const explosion = this.add.sprite(x, y, 'explosion');
         explosion.setScale(0.5);
 
@@ -678,6 +1066,43 @@ class PlayScene extends Phaser.Scene {
             onComplete: () => {
                 explosion.destroy();
             }
+        });
+
+        // Particle explosion burst
+        this.createExplosionParticles(x, y);
+    }
+
+    createExplosionParticles(x, y) {
+        // Spark particles bursting outward
+        const sparkEmitter = this.add.particles(x, y, 'spark_particle', {
+            speed: { min: 100, max: 250 },
+            scale: { start: 1, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: 600,
+            frequency: -1,
+            quantity: 20,
+            tint: [0xffff00, 0xff8800, 0xff4400, 0xffffff],
+            emitting: false
+        });
+        sparkEmitter.explode();
+
+        // Orange fire particles
+        const fireEmitter = this.add.particles(x, y, 'exhaust_particle', {
+            speed: { min: 50, max: 120 },
+            scale: { start: 0.8, end: 0 },
+            alpha: { start: 0.9, end: 0 },
+            lifespan: 400,
+            frequency: -1,
+            quantity: 15,
+            tint: [0xff6600, 0xffaa00, 0xffcc00],
+            emitting: false
+        });
+        fireEmitter.explode();
+
+        // Clean up emitters after animation
+        this.time.delayedCall(700, () => {
+            sparkEmitter.destroy();
+            fireEmitter.destroy();
         });
     }
 
@@ -767,6 +1192,23 @@ class PlayScene extends Phaser.Scene {
             return;
         }
 
+        // Twinkle stars animation
+        if (this.twinkleStars) {
+            const time = this.time.now * 0.003;
+            this.twinkleStars.forEach((star, index) => {
+                const alpha = 0.4 + Math.sin(time + index * 0.7) * 0.4;
+                star.setAlpha(alpha);
+            });
+        }
+
+        // Update player glow positions
+        if (this.player1) {
+            this.updatePlayerGlow(1, this.player1.x, this.player1.y);
+        }
+        if (this.player2) {
+            this.updatePlayerGlow(2, this.player2.x, this.player2.y);
+        }
+
         if (this.isShooting) {
             // Check if projectile is out of bounds or hit ground
             if (this.projectile) {
@@ -793,7 +1235,14 @@ class PlayScene extends Phaser.Scene {
                 }
 
                 if (this.projectile.y > 720) {
+                    // Calculate crater size based on power (20-40px)
+                    const craterRadius = 20 + (this.power / 100) * 20;
+                    this.createCrater(this.projectile.x, 720, craterRadius);
                     this.createExplosion(this.projectile.x, 720);
+
+                    // Adjust all players to new terrain after crater
+                    this.adjustPlayersToTerrain();
+
                     this.stopProjectileTrail();
                     this.destroyProjectile();
                     this.endTurn();
@@ -805,6 +1254,9 @@ class PlayScene extends Phaser.Scene {
             }
             return;
         }
+
+        // Player movement (only during aiming phase, not while shooting)
+        this.handlePlayerMovement();
 
         // Angle adjustment (keyboard) - FIXED: LEFT decreases, RIGHT increases
         if (this.keys.left.isDown) {
@@ -825,18 +1277,18 @@ class PlayScene extends Phaser.Scene {
             }
         }
 
-        // Power adjustment (keyboard)
-        if (this.keys.up.isDown || this.keys.upArrow.isDown) {
-            if (!this.keysPressed['up']) {
-                this.keysPressed['up'] = true;
+        // Power adjustment (keyboard) - Q/E and Shift keys
+        if (this.keys.p1PowerUp.isDown || this.keys.p2PowerUp.isDown) {
+            if (!this.keysPressed['powerUp']) {
+                this.keysPressed['powerUp'] = true;
                 this.power = Math.min(100, this.power + 3);
                 this.updatePowerBar(this.power);
                 this.updateUI();
                 this.drawTrajectory();
             }
-        } else if (this.keys.down.isDown || this.keys.downArrow.isDown) {
-            if (!this.keysPressed['down']) {
-                this.keysPressed['down'] = true;
+        } else if (this.keys.p1PowerDown.isDown || this.keys.p2PowerDown.isDown) {
+            if (!this.keysPressed['powerDown']) {
+                this.keysPressed['powerDown'] = true;
                 this.power = Math.max(10, this.power - 3);
                 this.updatePowerBar(this.power);
                 this.updateUI();
@@ -879,11 +1331,11 @@ class PlayScene extends Phaser.Scene {
         if (this.keys.right.isUp) {
             this.keysPressed['right'] = false;
         }
-        if (this.keys.up.isUp && this.keys.upArrow.isUp) {
-            this.keysPressed['up'] = false;
+        if (this.keys.p1PowerUp.isUp && this.keys.p2PowerUp.isUp) {
+            this.keysPressed['powerUp'] = false;
         }
-        if (this.keys.down.isUp && this.keys.downArrow.isUp) {
-            this.keysPressed['down'] = false;
+        if (this.keys.p1PowerDown.isUp && this.keys.p2PowerDown.isUp) {
+            this.keysPressed['powerDown'] = false;
         }
 
         // Shooting (keyboard)
