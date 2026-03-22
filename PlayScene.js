@@ -510,6 +510,30 @@ class PlayScene extends Phaser.Scene {
             .setInteractive({ useHandCursor: true })
             .setAlpha(0.85);
 
+        // Movement button Y position (below angle/power buttons)
+        const moveBtnY = 620;
+        const moveBtnSize = 50;
+
+        // P1 Left Button (<) - backward for P1
+        this.p1LeftBtn = this.add.image(60, moveBtnY, 'touch_btn_p1_left')
+            .setInteractive({ useHandCursor: true })
+            .setAlpha(0.85);
+
+        // P1 Right Button (>) - forward for P1
+        this.p1RightBtn = this.add.image(140, moveBtnY, 'touch_btn_p1_right')
+            .setInteractive({ useHandCursor: true })
+            .setAlpha(0.85);
+
+        // P2 Left Button (<) - backward for P2
+        this.p2LeftBtn = this.add.image(460, moveBtnY, 'touch_btn_p2_left')
+            .setInteractive({ useHandCursor: true })
+            .setAlpha(0.85);
+
+        // P2 Right Button (>) - forward for P2
+        this.p2RightBtn = this.add.image(540, moveBtnY, 'touch_btn_p2_right')
+            .setInteractive({ useHandCursor: true })
+            .setAlpha(0.85);
+
         // FIRE Button - center bottom
         this.fireBtn = this.add.image(300, 700, 'touch_fire_btn')
             .setInteractive({ useHandCursor: true })
@@ -539,6 +563,32 @@ class PlayScene extends Phaser.Scene {
         this.add.text(540, btnY, '▲', {
             fontSize: '28px',
             color: '#ffffff'
+        }).setOrigin(0.5);
+
+        // P1 movement labels
+        this.add.text(60, moveBtnY, '<', {
+            fontSize: '24px',
+            color: '#ff6666',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(140, moveBtnY, '>', {
+            fontSize: '24px',
+            color: '#ff6666',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // P2 movement labels
+        this.add.text(460, moveBtnY, '<', {
+            fontSize: '24px',
+            color: '#6666ff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(540, moveBtnY, '>', {
+            fontSize: '24px',
+            color: '#6666ff',
+            fontStyle: 'bold'
         }).setOrigin(0.5);
 
         this.add.text(300, 700, 'FIRE', {
@@ -571,6 +621,10 @@ class PlayScene extends Phaser.Scene {
         setupHover(this.angleUpBtn);
         setupHover(this.powerDownBtn);
         setupHover(this.powerUpBtn);
+        setupHover(this.p1LeftBtn);
+        setupHover(this.p1RightBtn);
+        setupHover(this.p2LeftBtn);
+        setupHover(this.p2RightBtn);
         setupHover(this.fireBtn);
         setupHover(this.windBtn);
     }
@@ -676,6 +730,70 @@ class PlayScene extends Phaser.Scene {
         windOffGraphics.lineBetween(20, 20, 35, 35);
         windOffGraphics.lineBetween(35, 20, 20, 35);
         windOffGraphics.generateTexture('touch_wind_btn_off', 80, 50);
+
+        // P1 Left movement button (<) - red tint
+        const p1LeftGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        p1LeftGraphics.fillStyle(0xaa4444, 1);
+        p1LeftGraphics.fillRoundedRect(0, 0, 50, 50, 10);
+        p1LeftGraphics.lineStyle(3, 0xcc6666, 1);
+        p1LeftGraphics.strokeRoundedRect(0, 0, 50, 50, 10);
+        // Left arrow
+        p1LeftGraphics.fillStyle(0xffffff, 1);
+        p1LeftGraphics.beginPath();
+        p1LeftGraphics.moveTo(30, 15);
+        p1LeftGraphics.lineTo(15, 25);
+        p1LeftGraphics.lineTo(30, 35);
+        p1LeftGraphics.closePath();
+        p1LeftGraphics.fillPath();
+        p1LeftGraphics.generateTexture('touch_btn_p1_left', 50, 50);
+
+        // P1 Right movement button (>) - red tint
+        const p1RightGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        p1RightGraphics.fillStyle(0xaa4444, 1);
+        p1RightGraphics.fillRoundedRect(0, 0, 50, 50, 10);
+        p1RightGraphics.lineStyle(3, 0xcc6666, 1);
+        p1RightGraphics.strokeRoundedRect(0, 0, 50, 50, 10);
+        // Right arrow
+        p1RightGraphics.fillStyle(0xffffff, 1);
+        p1RightGraphics.beginPath();
+        p1RightGraphics.moveTo(20, 15);
+        p1RightGraphics.lineTo(35, 25);
+        p1RightGraphics.lineTo(20, 35);
+        p1RightGraphics.closePath();
+        p1RightGraphics.fillPath();
+        p1RightGraphics.generateTexture('touch_btn_p1_right', 50, 50);
+
+        // P2 Left movement button (<) - blue tint
+        const p2LeftGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        p2LeftGraphics.fillStyle(0x4444aa, 1);
+        p2LeftGraphics.fillRoundedRect(0, 0, 50, 50, 10);
+        p2LeftGraphics.lineStyle(3, 0x6666cc, 1);
+        p2LeftGraphics.strokeRoundedRect(0, 0, 50, 50, 10);
+        // Left arrow
+        p2LeftGraphics.fillStyle(0xffffff, 1);
+        p2LeftGraphics.beginPath();
+        p2LeftGraphics.moveTo(30, 15);
+        p2LeftGraphics.lineTo(15, 25);
+        p2LeftGraphics.lineTo(30, 35);
+        p2LeftGraphics.closePath();
+        p2LeftGraphics.fillPath();
+        p2LeftGraphics.generateTexture('touch_btn_p2_left', 50, 50);
+
+        // P2 Right movement button (>) - blue tint
+        const p2RightGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+        p2RightGraphics.fillStyle(0x4444aa, 1);
+        p2RightGraphics.fillRoundedRect(0, 0, 50, 50, 10);
+        p2RightGraphics.lineStyle(3, 0x6666cc, 1);
+        p2RightGraphics.strokeRoundedRect(0, 0, 50, 50, 10);
+        // Right arrow
+        p2RightGraphics.fillStyle(0xffffff, 1);
+        p2RightGraphics.beginPath();
+        p2RightGraphics.moveTo(20, 15);
+        p2RightGraphics.lineTo(35, 25);
+        p2RightGraphics.lineTo(20, 35);
+        p2RightGraphics.closePath();
+        p2RightGraphics.fillPath();
+        p2RightGraphics.generateTexture('touch_btn_p2_right', 50, 50);
     }
 
     setupTouchInput() {
@@ -684,7 +802,11 @@ class PlayScene extends Phaser.Scene {
             angleDown: false,
             angleUp: false,
             powerDown: false,
-            powerUp: false
+            powerUp: false,
+            p1Left: false,
+            p1Right: false,
+            p2Left: false,
+            p2Right: false
         };
 
         // Angle down button
@@ -729,6 +851,50 @@ class PlayScene extends Phaser.Scene {
         });
         this.powerUpBtn.on('pointerout', () => {
             this.touchState.powerUp = false;
+        });
+
+        // P1 Left button - backward (S)
+        this.p1LeftBtn.on('pointerdown', () => {
+            this.touchState.p1Left = true;
+        });
+        this.p1LeftBtn.on('pointerup', () => {
+            this.touchState.p1Left = false;
+        });
+        this.p1LeftBtn.on('pointerout', () => {
+            this.touchState.p1Left = false;
+        });
+
+        // P1 Right button - forward (W)
+        this.p1RightBtn.on('pointerdown', () => {
+            this.touchState.p1Right = true;
+        });
+        this.p1RightBtn.on('pointerup', () => {
+            this.touchState.p1Right = false;
+        });
+        this.p1RightBtn.on('pointerout', () => {
+            this.touchState.p1Right = false;
+        });
+
+        // P2 Left button - backward (Arrow Down)
+        this.p2LeftBtn.on('pointerdown', () => {
+            this.touchState.p2Left = true;
+        });
+        this.p2LeftBtn.on('pointerup', () => {
+            this.touchState.p2Left = false;
+        });
+        this.p2LeftBtn.on('pointerout', () => {
+            this.touchState.p2Left = false;
+        });
+
+        // P2 Right button - forward (Arrow Up)
+        this.p2RightBtn.on('pointerdown', () => {
+            this.touchState.p2Right = true;
+        });
+        this.p2RightBtn.on('pointerup', () => {
+            this.touchState.p2Right = false;
+        });
+        this.p2RightBtn.on('pointerout', () => {
+            this.touchState.p2Right = false;
         });
 
         // Fire button - merged pointerdown handlers
@@ -1321,6 +1487,44 @@ class PlayScene extends Phaser.Scene {
             this.power = Math.max(10, this.power - 3);
             this.updatePowerBar(this.power);
             this.updateUI();
+            this.drawTrajectory();
+        }
+
+        // Touch controls - player movement
+        const delta = this.game.loop.delta;
+        let p1Moving = false;
+        let p2Moving = false;
+
+        // P1 movement via touch: p1Right = forward (W), p1Left = backward (S)
+        if (this.touchState.p1Right) {
+            this.movePlayer(this.player1, this.dustEmitter1, this.dustEmitter1Active, 1, delta);
+            p1Moving = true;
+        } else if (this.touchState.p1Left) {
+            this.movePlayer(this.player1, this.dustEmitter1, this.dustEmitter1Active, -1, delta);
+            p1Moving = true;
+        }
+
+        // P2 movement via touch: p2Right = forward (Arrow Up), p2Left = backward (Arrow Down)
+        if (this.touchState.p2Right) {
+            this.movePlayer(this.player2, this.dustEmitter2, this.dustEmitter2Active, -1, delta);
+            p2Moving = true;
+        } else if (this.touchState.p2Left) {
+            this.movePlayer(this.player2, this.dustEmitter2, this.dustEmitter2Active, 1, delta);
+            p2Moving = true;
+        }
+
+        // Stop dust particles when player stops moving
+        if (!p1Moving && this.dustEmitter1 && this.dustEmitter1Active) {
+            this.dustEmitter1.stop();
+            this.dustEmitter1Active = false;
+        }
+        if (!p2Moving && this.dustEmitter2 && this.dustEmitter2Active) {
+            this.dustEmitter2.stop();
+            this.dustEmitter2Active = false;
+        }
+
+        // Update trajectory after movement
+        if (p1Moving || p2Moving) {
             this.drawTrajectory();
         }
 
