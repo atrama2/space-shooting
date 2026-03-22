@@ -17,6 +17,8 @@ class PlayScene extends Phaser.Scene {
         this.setupTouchControls();
         this.setupInput();
         this.setupSound();
+        this.createBirdTexture();
+        this.spawnBirds();
         this.initGameState();
     }
 
@@ -474,6 +476,110 @@ class PlayScene extends Phaser.Scene {
             const y = Phaser.Math.Between(0, 700);
             stars4.fillCircle(x, y, 1.5);
         }
+    }
+
+    createBirdTexture() {
+        // Create a simple V-shape bird silhouette using Phaser graphics
+        if (this.textures.exists('bird')) return;
+
+        const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Bird body (small oval)
+        graphics.fillStyle(0x222233, 1);
+        graphics.fillEllipse(10, 10, 6, 4);
+
+        // Left wing (V-shape)
+        graphics.fillStyle(0x222233, 1);
+        graphics.beginPath();
+        graphics.moveTo(7, 9);
+        graphics.lineTo(0, 4);
+        graphics.lineTo(5, 8);
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Right wing (V-shape)
+        graphics.beginPath();
+        graphics.moveTo(13, 9);
+        graphics.lineTo(20, 4);
+        graphics.lineTo(15, 8);
+        graphics.closePath();
+        graphics.fillPath();
+
+        graphics.generateTexture('bird', 20, 14);
+    }
+
+    spawnBirds() {
+        // Create a group of 6 birds with varying properties for depth
+        const birdCount = 6;
+        this.birds = [];
+
+        for (let i = 0; i < birdCount; i++) {
+            // Depth layer: 0 = farthest, 1 = closest
+            const depth = i / (birdCount - 1);
+
+            // Smaller and more transparent birds are farther away
+            const scale = 0.5 + depth * 0.6; // 0.5 to 1.1
+            const alpha = 0.4 + depth * 0.5; // 0.4 to 0.9
+
+            // Speed varies - farther birds appear slower
+            const speed = 20 + depth * 40; // 20 to 60 pixels per second
+
+            // Y position between 50-200 with some variation
+            const baseY = 50 + Math.random() * 150;
+
+            // Sine wave amplitude and frequency for floating motion
+            const sineAmplitude = 5 + Math.random() * 10;
+            const sineFrequency = 0.5 + Math.random() * 1.5;
+            const sineOffset = Math.random() * Math.PI * 2;
+
+            const bird = this.add.image(-50 - Math.random() * 200, baseY, 'bird');
+            bird.setScale(scale);
+            bird.setAlpha(alpha);
+            bird.setTint(0x333344); // Slight blue tint for distant birds
+
+            // Store bird properties for animation
+            bird.birdData = {
+                speed: speed,
+                baseY: baseY,
+                sineAmplitude: sineAmplitude,
+                sineFrequency: sineFrequency,
+                sineOffset: sineOffset,
+                depth: depth,
+                time: 0
+            };
+
+            this.birds.push(bird);
+        }
+    }
+
+    updateBirds(delta) {
+        if (!this.birds) return;
+
+        const deltaSeconds = delta / 1000;
+
+        this.birds.forEach(bird => {
+            const data = bird.birdData;
+            if (!data) return;
+
+            // Move bird from left to right
+            bird.x += data.speed * deltaSeconds;
+
+            // Sine wave vertical motion
+            data.time += deltaSeconds;
+            const sineY = Math.sin(data.time * data.sineFrequency * Math.PI * 2 + data.sineOffset) * data.sineAmplitude;
+            bird.y = data.baseY + sineY;
+
+            // Wing flap animation - subtle rotation
+            bird.rotation = Math.sin(data.time * 8) * 0.1;
+
+            // Loop when bird exits screen
+            if (bird.x > 650) {
+                bird.x = -50 - Math.random() * 100;
+                bird.y = 50 + Math.random() * 150;
+                data.baseY = bird.y;
+                data.sineOffset = Math.random() * Math.PI * 2;
+            }
+        });
     }
 
     setupPlayers() {
@@ -1592,6 +1698,9 @@ class PlayScene extends Phaser.Scene {
             }
             return;
         }
+
+        // Update birds animation
+        this.updateBirds(this.game.loop.delta);
 
         // Twinkle stars animation
         if (this.twinkleStars) {
