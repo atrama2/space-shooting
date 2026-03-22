@@ -378,16 +378,12 @@ class PlayScene extends Phaser.Scene {
             this.touchState.powerUp = false;
         });
 
-        // Fire button
+        // Fire button - merged pointerdown handlers
         this.fireBtn.on('pointerdown', () => {
+            this.fireBtn.setScale(0.95);
             if (!this.isShooting && !this.gameOver) {
                 this.shoot();
             }
-        });
-
-        // Visual feedback for fire button press
-        this.fireBtn.on('pointerdown', () => {
-            this.fireBtn.setScale(0.95);
         });
         this.fireBtn.on('pointerup', () => {
             this.fireBtn.setScale(1);
@@ -526,6 +522,12 @@ class PlayScene extends Phaser.Scene {
 
         for (let i = 0; i < 50; i++) {
             const dt = 0.05;
+
+            // Apply wind to trajectory preview (same formula as in update())
+            if (this.windEnabled) {
+                const windForce = this.wind * 0.01 * dt;
+                pvx += windForce;
+            }
 
             x += pvx * dt;
             y += pvy * dt;
@@ -804,11 +806,11 @@ class PlayScene extends Phaser.Scene {
             return;
         }
 
-        // Angle adjustment (keyboard)
+        // Angle adjustment (keyboard) - FIXED: LEFT decreases, RIGHT increases
         if (this.keys.left.isDown) {
             if (!this.keysPressed['left']) {
                 this.keysPressed['left'] = true;
-                this.angle = Math.min(80, this.angle + 5);
+                this.angle = Math.max(-80, this.angle - 5);
                 this.updatePowerBar(this.power);
                 this.updateUI();
                 this.drawTrajectory();
@@ -816,7 +818,7 @@ class PlayScene extends Phaser.Scene {
         } else if (this.keys.right.isDown) {
             if (!this.keysPressed['right']) {
                 this.keysPressed['right'] = true;
-                this.angle = Math.max(-80, this.angle - 5);
+                this.angle = Math.min(80, this.angle + 5);
                 this.updatePowerBar(this.power);
                 this.updateUI();
                 this.drawTrajectory();
