@@ -588,7 +588,7 @@ class PlayScene extends Phaser.Scene {
         this.createProjectileTrail();
 
         // Collision with players
-        this.physics.world.overlaps.clear();
+        // Overlaps auto-clear when objects destroyed - no manual clear needed
         this.physics.add.overlap(this.projectile, this.player1, this.hitPlayer, null, this);
         this.physics.add.overlap(this.projectile, this.player2, this.hitPlayer, null, this);
     }
